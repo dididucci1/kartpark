@@ -356,7 +356,13 @@ export default function App({ onLogout }: AppProps) {
         </button>
       </aside>
 
-      <main className="conteudo">{renderConteudo()}</main>
+      <main
+        className={
+          "conteudo " + (abaAtiva === "checkin" ? "conteudo-checkin" : "")
+        }
+      >
+        {renderConteudo()}
+      </main>
     </div>
   );
 }
