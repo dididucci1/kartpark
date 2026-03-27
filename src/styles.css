@@ -1116,6 +1116,11 @@ body {
     padding: 1rem 1rem 1.5rem;
   }
 
+  /* No celular, mostrar também o texto das opções de menu */
+  .app-container.menu-colapsado .menu-label {
+    display: block;
+  }
+
   .agendamentos-layout,
   .baterias-layout,
   .dashboard-graficos-grid,
