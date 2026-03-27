@@ -6,9 +6,16 @@ type Bateria = {
   horario: string;
   duracaoMinutos: number;
   kartsDisponiveis: number;
+  valorPorPiloto: number;
+  valorTotal: number;
 };
 
 const BATERIAS_STORAGE_KEY = "kartodromo_baterias";
+
+const currencyFormatter = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
 
 const bateriasIniciais: Bateria[] = [
   {
@@ -17,6 +24,8 @@ const bateriasIniciais: Bateria[] = [
     horario: "14:00",
     duracaoMinutos: 15,
     kartsDisponiveis: 12,
+    valorPorPiloto: 150,
+    valorTotal: 150 * 12,
   },
   {
     id: 2,
@@ -24,6 +33,8 @@ const bateriasIniciais: Bateria[] = [
     horario: "14:30",
     duracaoMinutos: 15,
     kartsDisponiveis: 10,
+    valorPorPiloto: 150,
+    valorTotal: 150 * 10,
   },
   {
     id: 3,
@@ -31,6 +42,8 @@ const bateriasIniciais: Bateria[] = [
     horario: "15:00",
     duracaoMinutos: 20,
     kartsDisponiveis: 8,
+    valorPorPiloto: 150,
+    valorTotal: 150 * 8,
   },
 ];
 
@@ -40,13 +53,34 @@ export function Baterias() {
   const [horario, setHorario] = useState("");
   const [duracaoMinutos, setDuracaoMinutos] = useState("");
   const [kartsDisponiveis, setKartsDisponiveis] = useState("");
+  const [valorPorPiloto, setValorPorPiloto] = useState("");
 
   useEffect(() => {
     try {
       const armazenado = localStorage.getItem(BATERIAS_STORAGE_KEY);
       if (armazenado) {
-        const lista: Bateria[] = JSON.parse(armazenado);
-        setBaterias(lista);
+        const listaArmazenada: Bateria[] = JSON.parse(armazenado);
+        const listaNormalizada: Bateria[] = listaArmazenada.map((bateria) => {
+          const valorPorPiloto =
+            typeof bateria.valorPorPiloto === "number"
+              ? bateria.valorPorPiloto
+              : 0;
+
+          const valorTotal =
+            typeof bateria.valorTotal === "number"
+              ? bateria.valorTotal
+              : valorPorPiloto && bateria.kartsDisponiveis
+              ? valorPorPiloto * bateria.kartsDisponiveis
+              : 0;
+
+          return {
+            ...bateria,
+            valorPorPiloto,
+            valorTotal,
+          };
+        });
+
+        setBaterias(listaNormalizada);
       } else {
         setBaterias(bateriasIniciais);
         localStorage.setItem(
@@ -62,16 +96,21 @@ export function Baterias() {
   function handleCriarBateria(event: FormEvent) {
     event.preventDefault();
 
-    if (!data || !horario || !duracaoMinutos || !kartsDisponiveis) {
+    if (!data || !horario || !duracaoMinutos || !kartsDisponiveis || !valorPorPiloto) {
       return;
     }
+
+    const valorPorPilotoNumero = Number(valorPorPiloto);
+    const kartsNumero = Number(kartsDisponiveis);
 
     const novaBateria: Bateria = {
       id: baterias.length + 1,
       data,
       horario,
       duracaoMinutos: Number(duracaoMinutos),
-      kartsDisponiveis: Number(kartsDisponiveis),
+      kartsDisponiveis: kartsNumero,
+      valorPorPiloto: valorPorPilotoNumero,
+      valorTotal: valorPorPilotoNumero * kartsNumero,
     };
 
     const listaAtualizada = [...baterias, novaBateria];
@@ -90,6 +129,7 @@ export function Baterias() {
     setHorario("");
     setDuracaoMinutos("");
     setKartsDisponiveis("");
+    setValorPorPiloto("");
   }
 
   return (
@@ -118,6 +158,8 @@ export function Baterias() {
               <span>Horário</span>
               <span>Duração</span>
               <span>Karts disponíveis</span>
+              <span>Valor / piloto</span>
+              <span>Valor total</span>
             </div>
             {baterias.map((bateria) => (
               <div key={bateria.id} className="baterias-tabela-linha">
@@ -127,6 +169,16 @@ export function Baterias() {
                 <span>{bateria.horario}</span>
                 <span>{bateria.duracaoMinutos} min</span>
                 <span>{bateria.kartsDisponiveis}</span>
+                <span>
+                  {bateria.valorPorPiloto
+                    ? currencyFormatter.format(bateria.valorPorPiloto)
+                    : "-"}
+                </span>
+                <span>
+                  {bateria.valorTotal
+                    ? currencyFormatter.format(bateria.valorTotal)
+                    : "-"}
+                </span>
               </div>
             ))}
           </div>
@@ -179,6 +231,18 @@ export function Baterias() {
                 min={1}
                 value={kartsDisponiveis}
                 onChange={(event) => setKartsDisponiveis(event.target.value)}
+              />
+            </div>
+
+            <div className="campo-form">
+              <label htmlFor="valorPorPiloto">Valor por piloto (R$)</label>
+              <input
+                id="valorPorPiloto"
+                type="number"
+                min={0}
+                step={10}
+                value={valorPorPiloto}
+                onChange={(event) => setValorPorPiloto(event.target.value)}
               />
             </div>
 

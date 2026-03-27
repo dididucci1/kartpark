@@ -44,8 +44,24 @@ export default function App({ onLogout }: AppProps) {
     }
   };
 
+  const handleCliqueMenu = (aba: Aba) => {
+    setAbaAtiva(aba);
+    if (window.innerWidth <= 768) {
+      setMenuColapsado(false);
+    }
+  };
+
   return (
     <div className={"app-container " + (menuColapsado ? "menu-colapsado" : "")}>
+      <button
+        type="button"
+        className="menu-mobile-toggle"
+        onClick={() => setMenuColapsado((valor) => !valor)}
+        aria-label={menuColapsado ? "Fechar menu" : "Abrir menu"}
+      >
+        ☰
+      </button>
+
       <aside className="sidebar">
         <div className="sidebar-topo">
           <div className="logo">
@@ -67,7 +83,7 @@ export default function App({ onLogout }: AppProps) {
             className={
               "menu-item " + (abaAtiva === "relatorios" ? "ativo" : "")
             }
-            onClick={() => setAbaAtiva("relatorios")}
+            onClick={() => handleCliqueMenu("relatorios")}
           >
             <span className="menu-icon">
               <svg
@@ -116,7 +132,7 @@ export default function App({ onLogout }: AppProps) {
             className={
               "menu-item " + (abaAtiva === "dashboard" ? "ativo" : "")
             }
-            onClick={() => setAbaAtiva("dashboard")}
+            onClick={() => handleCliqueMenu("dashboard")}
           >
             <span className="menu-icon">
               <svg
@@ -151,7 +167,7 @@ export default function App({ onLogout }: AppProps) {
             className={
               "menu-item " + (abaAtiva === "agendamentos" ? "ativo" : "")
             }
-            onClick={() => setAbaAtiva("agendamentos")}
+            onClick={() => handleCliqueMenu("agendamentos")}
           >
             <span className="menu-icon">
               <svg
@@ -204,7 +220,7 @@ export default function App({ onLogout }: AppProps) {
             className={
               "menu-item " + (abaAtiva === "checkin" ? "ativo" : "")
             }
-            onClick={() => setAbaAtiva("checkin")}
+            onClick={() => handleCliqueMenu("checkin")}
           >
             <span className="menu-icon">
               <svg
@@ -254,7 +270,7 @@ export default function App({ onLogout }: AppProps) {
             className={
               "menu-item " + (abaAtiva === "baterias" ? "ativo" : "")
             }
-            onClick={() => setAbaAtiva("baterias")}
+            onClick={() => handleCliqueMenu("baterias")}
           >
             <span className="menu-icon">
               <svg
@@ -292,7 +308,7 @@ export default function App({ onLogout }: AppProps) {
             className={
               "menu-item " + (abaAtiva === "custos" ? "ativo" : "")
             }
-            onClick={() => setAbaAtiva("custos")}
+            onClick={() => handleCliqueMenu("custos")}
           >
             <span className="menu-icon">
               <svg
