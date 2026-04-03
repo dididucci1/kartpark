@@ -13,6 +13,10 @@ type CheckinReserva = {
   horario: string;
   telefone: string;
   status: "pendente" | "confirmado";
+  checkIn?: boolean;
+  pagamento?: boolean;
+  bateriaId?: number;
+  data?: string;
 };
 
 export function Checkin({ onIrParaAgendamentos }: CheckinProps) {
@@ -56,6 +60,7 @@ export function Checkin({ onIrParaAgendamentos }: CheckinProps) {
     const atualizada: CheckinReserva = {
       ...reservaEncontrada,
       status: "confirmado",
+      checkIn: true,
     };
 
     setReservaEncontrada(atualizada);
@@ -68,7 +73,7 @@ export function Checkin({ onIrParaAgendamentos }: CheckinProps) {
         : [];
 
       const reservasAtualizadas = reservas.map((r) =>
-        r.cpf === atualizada.cpf ? { ...r, status: "confirmado" } : r
+        r.cpf === atualizada.cpf ? { ...r, status: "confirmado", checkIn: true } : r
       );
 
       localStorage.setItem(
@@ -169,14 +174,14 @@ export function Checkin({ onIrParaAgendamentos }: CheckinProps) {
                       : "status-pendente")
                   }
                 >
-                  {reservaEncontrada.status === "confirmado"
+                  {reservaEncontrada.checkIn
                     ? "Check-in confirmado"
-                    : "Aguardando check-in"}
+                    : "Reservado"}
                 </span>
               </div>
             </div>
 
-            {reservaEncontrada.status === "pendente" && (
+            {!reservaEncontrada.checkIn && (
               <button
                 type="button"
                 className="botao-primario checkin-botao"

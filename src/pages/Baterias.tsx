@@ -17,36 +17,6 @@ const currencyFormatter = new Intl.NumberFormat("pt-BR", {
   currency: "BRL",
 });
 
-const bateriasIniciais: Bateria[] = [
-  {
-    id: 1,
-    data: "2026-03-27",
-    horario: "14:00",
-    duracaoMinutos: 15,
-    kartsDisponiveis: 12,
-    valorPorPiloto: 150,
-    valorTotal: 150 * 12,
-  },
-  {
-    id: 2,
-    data: "2026-03-27",
-    horario: "14:30",
-    duracaoMinutos: 15,
-    kartsDisponiveis: 10,
-    valorPorPiloto: 150,
-    valorTotal: 150 * 10,
-  },
-  {
-    id: 3,
-    data: "2026-03-27",
-    horario: "15:00",
-    duracaoMinutos: 20,
-    kartsDisponiveis: 8,
-    valorPorPiloto: 150,
-    valorTotal: 150 * 8,
-  },
-];
-
 export function Baterias() {
   const [baterias, setBaterias] = useState<Bateria[]>([]);
   const [data, setData] = useState("");
@@ -54,8 +24,10 @@ export function Baterias() {
   const [duracaoMinutos, setDuracaoMinutos] = useState("");
   const [kartsDisponiveis, setKartsDisponiveis] = useState("");
   const [valorPorPiloto, setValorPorPiloto] = useState("");
+  const [editando, setEditando] = useState<number | null>(null);
 
   useEffect(() => {
+    // Carrega baterias do localStorage
     try {
       const armazenado = localStorage.getItem(BATERIAS_STORAGE_KEY);
       if (armazenado) {
@@ -82,14 +54,10 @@ export function Baterias() {
 
         setBaterias(listaNormalizada);
       } else {
-        setBaterias(bateriasIniciais);
-        localStorage.setItem(
-          BATERIAS_STORAGE_KEY,
-          JSON.stringify(bateriasIniciais)
-        );
+        setBaterias([]);
       }
     } catch {
-      setBaterias(bateriasIniciais);
+      setBaterias([]);
     }
   }, []);
 
@@ -132,6 +100,79 @@ export function Baterias() {
     setValorPorPiloto("");
   }
 
+  function handleEditarBateria(bateria: Bateria) {
+    setEditando(bateria.id);
+    setData(bateria.data);
+    setHorario(bateria.horario);
+    setDuracaoMinutos(String(bateria.duracaoMinutos));
+    setKartsDisponiveis(String(bateria.kartsDisponiveis));
+    setValorPorPiloto(String(bateria.valorPorPiloto));
+  }
+
+  function handleSalvarEdicao(event: FormEvent) {
+    event.preventDefault();
+
+    if (!data || !horario || !duracaoMinutos || !kartsDisponiveis || !valorPorPiloto || editando === null) {
+      return;
+    }
+
+    const valorPorPilotoNumero = Number(valorPorPiloto);
+    const kartsNumero = Number(kartsDisponiveis);
+
+    const bateriasAtualizadas = baterias.map(bateria => 
+      bateria.id === editando
+        ? {
+            ...bateria,
+            data,
+            horario,
+            duracaoMinutos: Number(duracaoMinutos),
+            kartsDisponiveis: kartsNumero,
+            valorPorPiloto: valorPorPilotoNumero,
+            valorTotal: valorPorPilotoNumero * kartsNumero,
+          }
+        : bateria
+    );
+
+    setBaterias(bateriasAtualizadas);
+
+    try {
+      localStorage.setItem(BATERIAS_STORAGE_KEY, JSON.stringify(bateriasAtualizadas));
+    } catch {
+      // se não conseguir salvar, mantemos apenas em memória
+    }
+
+    setEditando(null);
+    setData("");
+    setHorario("");
+    setDuracaoMinutos("");
+    setKartsDisponiveis("");
+    setValorPorPiloto("");
+  }
+
+  function handleCancelarEdicao() {
+    setEditando(null);
+    setData("");
+    setHorario("");
+    setDuracaoMinutos("");
+    setKartsDisponiveis("");
+    setValorPorPiloto("");
+  }
+
+  function handleExcluirBateria(id: number) {
+    if (!confirm("Tem certeza que deseja excluir esta bateria?")) {
+      return;
+    }
+
+    const bateriasAtualizadas = baterias.filter(bateria => bateria.id !== id);
+    setBaterias(bateriasAtualizadas);
+
+    try {
+      localStorage.setItem(BATERIAS_STORAGE_KEY, JSON.stringify(bateriasAtualizadas));
+    } catch {
+      // se não conseguir salvar, mantemos apenas em memória
+    }
+  }
+
   return (
     <div className="baterias">
       <div className="baterias-header">
@@ -160,6 +201,7 @@ export function Baterias() {
               <span>Karts disponíveis</span>
               <span>Valor / piloto</span>
               <span>Valor total</span>
+              <span>Ações</span>
             </div>
             {baterias.map((bateria) => (
               <div key={bateria.id} className="baterias-tabela-linha">
@@ -179,18 +221,34 @@ export function Baterias() {
                     ? currencyFormatter.format(bateria.valorTotal)
                     : "-"}
                 </span>
+                <span className="baterias-acoes">
+                  <button 
+                    className="btn-editar"
+                    onClick={() => handleEditarBateria(bateria)}
+                    title="Editar bateria"
+                  >
+                    ✏️
+                  </button>
+                  <button 
+                    className="btn-excluir"
+                    onClick={() => handleExcluirBateria(bateria.id)}
+                    title="Excluir bateria"
+                  >
+                    🗑️
+                  </button>
+                </span>
               </div>
             ))}
           </div>
         </section>
 
         <section className="baterias-form-wrapper">
-          <h2>Criar nova bateria</h2>
+          <h2>{editando ? "Editar bateria" : "Criar nova bateria"}</h2>
           <p className="baterias-texto-ajuda">
-            Preencha os dados abaixo para adicionar um novo horário de corrida.
+            Preencha os dados abaixo para {editando ? "atualizar" : "adicionar um novo"} horário de corrida.
           </p>
 
-          <form className="baterias-form" onSubmit={handleCriarBateria}>
+          <form className="baterias-form" onSubmit={editando ? handleSalvarEdicao : handleCriarBateria}>
             <div className="campo-form">
               <label htmlFor="data">Data</label>
               <input
@@ -246,9 +304,20 @@ export function Baterias() {
               />
             </div>
 
-            <button type="submit" className="botao-primario">
-              Salvar bateria
-            </button>
+            <div className="baterias-form-acoes">
+              {editando && (
+                <button 
+                  type="button" 
+                  className="botao-secundario"
+                  onClick={handleCancelarEdicao}
+                >
+                  Cancelar
+                </button>
+              )}
+              <button type="submit" className="botao-primario">
+                {editando ? "Salvar alterações" : "Criar bateria"}
+              </button>
+            </div>
           </form>
         </section>
       </div>

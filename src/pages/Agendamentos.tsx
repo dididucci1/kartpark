@@ -1,40 +1,79 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const AGENDAMENTOS_STORAGE_KEY = "kartodromo_agendamentos";
+const BATERIAS_STORAGE_KEY = "kartodromo_baterias";
 
-type BateriaOpcao = {
-  id: string;
+type Bateria = {
+  id: number;
+  data: string;
   horario: string;
-  nome: string;
-  vagasRestantes: number;
+  duracaoMinutos: number;
+  kartsDisponiveis: number;
+  valorPorPiloto: number;
+  valorTotal: number;
 };
 
 type AgendamentoSalvo = {
   cpf: string;
   nome: string;
   telefone: string;
+  bateriaId: number;
   bateria: string;
   horario: string;
+  data: string;
   status: "pendente" | "confirmado";
+  checkIn?: boolean;
+  pagamento?: boolean;
+  metodoPagamento?: "dinheiro" | "pix" | "debito" | "credito";
 };
 
-const bateriasDisponiveis: BateriaOpcao[] = [
-  { id: "b1", horario: "14:00", nome: "Bateria 01", vagasRestantes: 2 },
-  { id: "b2", horario: "14:30", nome: "Bateria 02", vagasRestantes: 3 },
-  { id: "b3", horario: "15:00", nome: "Bateria 03", vagasRestantes: 1 },
-  { id: "b4", horario: "15:30", nome: "Bateria 04", vagasRestantes: 4 },
-];
-
 export function Agendamentos() {
-  const [bateriaSelecionada, setBateriaSelecionada] = useState<string>("");
+  const [baterias, setBaterias] = useState<Bateria[]>([]);
+  const [agendamentos, setAgendamentos] = useState<AgendamentoSalvo[]>([]);
+  const [dataFiltro, setDataFiltro] = useState("");
+  const [bateriaSelecionada, setBateriaSelecionada] = useState<number | null>(null);
   const [nome, setNome] = useState("");
   const [cpf, setCpf] = useState("");
   const [telefone, setTelefone] = useState("");
   const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
 
-  const bateriaAtual = bateriasDisponiveis.find(
-    (b) => b.id === bateriaSelecionada
-  );
+  // Carrega baterias e agendamentos do localStorage
+  useEffect(() => {
+    try {
+      const bateriasArmazenadas = localStorage.getItem(BATERIAS_STORAGE_KEY);
+      if (bateriasArmazenadas) {
+        setBaterias(JSON.parse(bateriasArmazenadas));
+      }
+
+      const agendamentosArmazenados = localStorage.getItem(AGENDAMENTOS_STORAGE_KEY);
+      if (agendamentosArmazenados) {
+        setAgendamentos(JSON.parse(agendamentosArmazenados));
+      }
+    } catch {
+      // Em caso de erro, mantém arrays vazios
+    }
+  }, []);
+
+  // Filtra baterias por data
+  const bateriasFiltradas = dataFiltro
+    ? baterias.filter((b) => b.data === dataFiltro)
+    : [];
+
+  // Calcula vagas restantes para cada bateria
+  function getVagasRestantes(bateriaId: number): number {
+    const bateria = baterias.find((b) => b.id === bateriaId);
+    if (!bateria) return 0;
+
+    const agendamentosDaBateria = agendamentos.filter(
+      (a) => a.bateriaId === bateriaId
+    );
+
+    return bateria.kartsDisponiveis - agendamentosDaBateria.length;
+  }
+
+  const bateriaAtual = bateriaSelecionada
+    ? baterias.find((b) => b.id === bateriaSelecionada)
+    : null;
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -54,13 +93,23 @@ export function Agendamentos() {
       return;
     }
 
+    const vagasRestantes = getVagasRestantes(bateriaSelecionada);
+    if (vagasRestantes <= 0) {
+      alert("Esta bateria não tem mais vagas disponíveis.");
+      return;
+    }
+
     const novoAgendamento: AgendamentoSalvo = {
       cpf: cpf.trim(),
       nome: nome.trim(),
       telefone: telefone.trim(),
-      bateria: bateriaAtual.nome,
+      bateriaId: bateriaAtual.id,
+      bateria: `Bateria ${bateriaAtual.id}`,
       horario: bateriaAtual.horario,
+      data: bateriaAtual.data,
       status: "pendente",
+      checkIn: false,
+      pagamento: false,
     };
 
     try {
@@ -74,13 +123,23 @@ export function Agendamentos() {
         AGENDAMENTOS_STORAGE_KEY,
         JSON.stringify(listaAtualizada)
       );
+      setAgendamentos(listaAtualizada);
     } catch {
       // se der erro no localStorage, apenas segue com a confirmação visual
     }
 
     setMensagemSucesso(
-      `Reserva recebida para ${nome} na ${bateriaAtual?.nome} às ${bateriaAtual?.horario}.`
+      `Reserva recebida para ${nome} na Bateria ${bateriaAtual.id} às ${bateriaAtual.horario}.`
     );
+
+    // Limpa seleção e formulário
+    setBateriaSelecionada(null);
+    setNome("");
+    setCpf("");
+    setTelefone("");
+
+    // Remove mensagem após 5 segundos
+    setTimeout(() => setMensagemSucesso(null), 5000);
   }
 
   return (
@@ -89,7 +148,7 @@ export function Agendamentos() {
         <div>
           <h1>Agende sua bateria</h1>
           <p className="agendamentos-subtitle">
-            Escolha um horário e preencha seus dados para garantir sua vaga.
+            Escolha uma data e horário para garantir sua vaga.
           </p>
         </div>
       </header>
@@ -97,31 +156,79 @@ export function Agendamentos() {
       <div className="agendamentos-layout">
         <section className="agendamentos-baterias">
           <h2>Escolha a bateria</h2>
-          <p className="agendamentos-texto-ajuda">
-            Selecione o horário desejado. Cada bateria tem número limitado de
-            vagas.
-          </p>
-
-          <div className="agendamentos-baterias-lista">
-            {bateriasDisponiveis.map((bateria) => (
-              <button
-                key={bateria.id}
-                type="button"
-                className={
-                  "bateria-card " +
-                  (bateriaSelecionada === bateria.id ? "bateria-card-ativa" : "")
-                }
-                onClick={() => setBateriaSelecionada(bateria.id)}
-              >
-                <div className="bateria-card-horario">{bateria.horario}</div>
-                <div className="bateria-card-nome">{bateria.nome}</div>
-                <div className="bateria-card-vagas">
-                  {bateria.vagasRestantes} vaga
-                  {bateria.vagasRestantes > 1 ? "s" : ""} restantes
-                </div>
-              </button>
-            ))}
+          
+          <div className="campo-form" style={{ marginBottom: '1.5rem' }}>
+            <label htmlFor="dataFiltro">Selecione a data</label>
+            <input
+              id="dataFiltro"
+              type="date"
+              value={dataFiltro}
+              onChange={(e) => {
+                setDataFiltro(e.target.value);
+                setBateriaSelecionada(null);
+              }}
+              style={{
+                padding: '0.75rem',
+                fontSize: '1rem',
+                borderRadius: '8px',
+                border: '1px solid #ddd',
+                width: '100%'
+              }}
+            />
           </div>
+
+          {!dataFiltro && (
+            <p className="agendamentos-texto-ajuda">
+              Selecione uma data acima para ver as baterias disponíveis.
+            </p>
+          )}
+
+          {dataFiltro && bateriasFiltradas.length === 0 && (
+            <p className="agendamentos-texto-ajuda" style={{ color: '#e74c3c' }}>
+              Nenhuma bateria disponível para esta data.
+            </p>
+          )}
+
+          {dataFiltro && bateriasFiltradas.length > 0 && (
+            <>
+              <p className="agendamentos-texto-ajuda">
+                {bateriasFiltradas.length} bateria{bateriasFiltradas.length > 1 ? 's' : ''} disponível{bateriasFiltradas.length > 1 ? 'is' : ''} em {new Date(dataFiltro + 'T00:00').toLocaleDateString('pt-BR')}
+              </p>
+
+              <div className="agendamentos-baterias-lista">
+                {bateriasFiltradas.map((bateria) => {
+                  const vagasRestantes = getVagasRestantes(bateria.id);
+                  const semVagas = vagasRestantes <= 0;
+
+                  return (
+                    <button
+                      key={bateria.id}
+                      type="button"
+                      className={
+                        "bateria-card " +
+                        (bateriaSelecionada === bateria.id ? "bateria-card-ativa" : "") +
+                        (semVagas ? " bateria-card-esgotada" : "")
+                      }
+                      onClick={() => !semVagas && setBateriaSelecionada(bateria.id)}
+                      disabled={semVagas}
+                    >
+                      <div className="bateria-card-horario">{bateria.horario}</div>
+                      <div className="bateria-card-nome">Bateria {bateria.id}</div>
+                      <div className="bateria-card-vagas">
+                        {semVagas ? (
+                          <span style={{ color: '#e74c3c' }}>Sem vagas</span>
+                        ) : (
+                          <>
+                            {vagasRestantes} vaga{vagasRestantes > 1 ? 's' : ''} restante{vagasRestantes > 1 ? 's' : ''}
+                          </>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </section>
 
         <section className="agendamentos-form-wrapper">
